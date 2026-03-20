@@ -12,15 +12,16 @@ def example_dag():
         time.sleep(5)
         print("Hello world, from Airflow!")
     
-    @task
-    def new_world():
-        time.sleep(5)
-        print("Welcome to the new world, from Airflow!")
+    # @task
+    # def new_world():
+    #     time.sleep(5)
+    #     print("Welcome to the new world, from Airflow!")
     
     @task
     def goodbye_world():
         time.sleep(5)
         print("Goodbye world, from Airflow!")
     
-    hello_world() >> new_world() >> goodbye_world()
+    # hello_world() >> new_world() >> goodbye_world()
+    hello_world() >> goodbye_world()
 example_dag()
