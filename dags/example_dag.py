@@ -22,5 +22,5 @@ def example_dag():
         time.sleep(5)
         print("Goodbye world, from Airflow!")
     
-    hello_world() >> new_world >> goodbye_world()
+    hello_world() >> new_world() >> goodbye_world()
 example_dag()
