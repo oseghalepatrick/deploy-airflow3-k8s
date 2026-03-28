@@ -1,1 +1,8 @@
 tmp/
+.env
+**/*-secrets.yaml
+
+aws/
+chart/spark-rbac.yaml
+spark-jobs/
+spark/

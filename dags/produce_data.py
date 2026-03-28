@@ -6,8 +6,8 @@ import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.sdk import Asset, asset
 
-posts_asset = Asset("s3://stackexchange-data-platform/raw/Posts.xml")
-users_asset = Asset("s3://stackexchange-data-platform/raw/Users.xml")
+posts_asset = Asset("s3://stackexchange-data-platform-joy/raw/Posts.xml")
+users_asset = Asset("s3://stackexchange-data-platform-joy/raw/Users.xml")
 
 
 @asset.multi(schedule="@daily", outlets=[posts_asset, users_asset])
@@ -37,12 +37,12 @@ def produce_data_assets():
     s3_hook.load_file(
         filename=posts_file,
         key="raw/Posts.xml",
-        bucket_name="stackexchange-data-platform",
+        bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
     s3_hook.load_file(
         filename=users_file,
         key="raw/Users.xml",
-        bucket_name="stackexchange-data-platform",
+        bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
