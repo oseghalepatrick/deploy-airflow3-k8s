@@ -1,9 +1,11 @@
 import sys
 import boto3
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession, Row
+from pyspark.sql.types import StructType, StructField, LongType, StringType, TimestampType
 from awsglue.context import GlueContext
 from awsglue.utils import getResolvedOptions
 
@@ -24,45 +26,88 @@ source_key = args["source_key"]
 catalog_database = args["catalog_database"]
 catalog_table = args["catalog_table"]
 
-# Spark / Glue contexts
 spark = SparkSession.builder.appName(args["JOB_NAME"]).getOrCreate()
 sc = SparkContext.getOrCreate()
 glue_context = GlueContext(sc)
 
-# Read XML from S3
+schema = StructType([
+    StructField("AcceptedAnswerId", LongType(), True),
+    StructField("AnswerCount", LongType(), True),
+    StructField("Body", StringType(), True),
+    StructField("ClosedDate", TimestampType(), True),
+    StructField("CommentCount", LongType(), True),
+    StructField("CommunityOwnedDate", TimestampType(), True),
+    StructField("ContentLicense", StringType(), True),
+    StructField("CreationDate", TimestampType(), True),
+    StructField("FavoriteCount", LongType(), True),
+    StructField("Id", LongType(), True),
+    StructField("LastActivityDate", TimestampType(), True),
+    StructField("LastEditDate", TimestampType(), True),
+    StructField("LastEditorDisplayName", StringType(), True),
+    StructField("LastEditorUserId", LongType(), True),
+    StructField("OwnerDisplayName", StringType(), True),
+    StructField("OwnerUserId", LongType(), True),
+    StructField("ParentId", LongType(), True),
+    StructField("PostTypeId", LongType(), True),
+    StructField("Score", LongType(), True),
+    StructField("Tags", StringType(), True),
+    StructField("Title", StringType(), True),
+    StructField("ViewCount", LongType(), True)
+])
+
+def to_long(value):
+    if value is None or value == "":
+        return None
+    return int(value)
+
+def to_timestamp(value):
+    if value is None or value == "":
+        return None
+    return datetime.fromisoformat(value)
+
 s3 = boto3.client("s3")
 obj = s3.get_object(Bucket=source_bucket, Key=source_key)
 xml_content = obj["Body"].read()
 
-# Parse XML
 root = ET.fromstring(xml_content)
 elements = root.findall("row")
 
-if not elements:
-    raise ValueError(f"No <row> elements found in s3://{source_bucket}/{source_key}")
-
-# Collect every attribute that appears in any row
-all_keys = set()
+rows = []
 for elem in elements:
-    all_keys.update(elem.attrib.keys())
+    attrib = elem.attrib
 
-# Build rows with None for missing attributes
-rows = [
-    Row(**{key: elem.attrib.get(key, None) for key in all_keys})
-    for elem in elements
-]
+    rows.append((
+        to_long(attrib.get("AcceptedAnswerId")),
+        to_long(attrib.get("AnswerCount")),
+        attrib.get("Body"),
+        to_timestamp(attrib.get("ClosedDate")),
+        to_long(attrib.get("CommentCount")),
+        to_timestamp(attrib.get("CommunityOwnedDate")),
+        attrib.get("ContentLicense"),
+        to_timestamp(attrib.get("CreationDate")),
+        to_long(attrib.get("FavoriteCount")),
+        to_long(attrib.get("Id")),
+        to_timestamp(attrib.get("LastActivityDate")),
+        to_timestamp(attrib.get("LastEditDate")),
+        attrib.get("LastEditorDisplayName"),
+        to_long(attrib.get("LastEditorUserId")),
+        attrib.get("OwnerDisplayName"),
+        to_long(attrib.get("OwnerUserId")),
+        to_long(attrib.get("ParentId")),
+        to_long(attrib.get("PostTypeId")),
+        to_long(attrib.get("Score")),
+        attrib.get("Tags"),
+        attrib.get("Title"),
+        to_long(attrib.get("ViewCount")),
+    ))
 
-# Create Spark DataFrame
-df = spark.createDataFrame(rows)
+df = spark.createDataFrame(rows, schema=schema)
 df.printSchema()
+df.show(5, truncate=False)
 
-temp_view = "tmp_posts"
-df.createOrReplaceTempView(temp_view)
+df.createOrReplaceTempView("tmp_posts")
 
-# Create database if it does not exist
 spark.sql(f"CREATE DATABASE IF NOT EXISTS glue_catalog.{catalog_database}")
-
-# Recreate table each run for a clean raw landing
 spark.sql(f"DROP TABLE IF EXISTS glue_catalog.{catalog_database}.{catalog_table}")
 
 query = f"""
@@ -70,11 +115,6 @@ CREATE TABLE glue_catalog.{catalog_database}.{catalog_table}
 USING iceberg
 TBLPROPERTIES ("format-version"="2")
 AS
-SELECT * FROM {temp_view}
+SELECT * FROM tmp_posts
 """
 spark.sql(query)
-
-print(
-    f"Created Iceberg table glue_catalog.{catalog_database}.{catalog_table} "
-    f"from s3://{source_bucket}/{source_key}"
-)
