@@ -36,13 +36,13 @@ def produce_data_assets():
     users_file = os.path.join(extract_path, "Users.xml")
     s3_hook.load_file(
         filename=posts_file,
-        key="raw/Posts.xml",
+        key="raw/posts/Posts.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
     s3_hook.load_file(
         filename=users_file,
-        key="raw/Users.xml",
+        key="raw/users/Users.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )

@@ -1,8 +1,9 @@
 tmp/
 .env
-**/*-secrets.yaml
+**/git-secrets.yaml
 
 aws/
 chart/spark-rbac.yaml
 spark-jobs/
 spark/
+*.xml
