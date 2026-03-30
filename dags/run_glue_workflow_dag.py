@@ -5,12 +5,15 @@ from airflow.providers.amazon.aws.transfers.local_to_s3 import LocalFilesystemTo
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 
 from produce_data import posts_asset, users_asset
+from pathlib import Path
+
+DAG_DIR = Path(__file__).resolve().parent
 
 AWS_CONN_ID = "aws_conn"
 AWS_REGION = "eu-west-1"
 
 S3_BUCKET = "stackexchange-data-platform-joy"
-LOCAL_GLUE_SCRIPT = "/opt/airflow/dags/src/scripts/my_etl.py"
+LOCAL_GLUE_SCRIPT = str(DAG_DIR / "scripts" / "my_etl.py")
 S3_GLUE_SCRIPT_KEY = "scripts/my_etl.py"
 S3_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_GLUE_SCRIPT_KEY}"
 
