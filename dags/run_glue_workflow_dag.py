@@ -222,8 +222,6 @@ def upload_and_run_aws_glue_job():
                     "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
                     f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
                     "--conf spark.sql.catalog.glue_catalog.type=glue "
-                    "--conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog "
-                    "--conf spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO "
                     "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
                     "--conf spark.sql.iceberg.handle-timestamp-without-timezone=true "
                     "--conf spark.serializer=org.apache.spark.serializer.KryoSerializer "
