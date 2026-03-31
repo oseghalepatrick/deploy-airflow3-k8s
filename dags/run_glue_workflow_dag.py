@@ -78,7 +78,7 @@ def upload_and_run_aws_glue_job():
         s3_bucket=S3_BUCKET,
         local_directory=LOCAL_GLUE_SCRIPT,
         s3_key_prefix=S3_GLUE_SCRIPT_KEY,
-        aws_conn_id=AWS_CONN_ID
+        aws_conn_id=AWS_CONN_ID,
     )
 
     run_bronze_posts_glue_job = GlueJobOperator(
@@ -103,6 +103,7 @@ def upload_and_run_aws_glue_job():
                 "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
                 "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
                 f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                "--conf spark.sql.catalog.glue_catalog.type=glue "
                 "--conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog "
                 "--conf spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO "
                 "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
@@ -168,6 +169,7 @@ def upload_and_run_aws_glue_job():
                     "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
                     "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
                     f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                    "--conf spark.sql.catalog.glue_catalog.type=glue "
                     "--conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog "
                     "--conf spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO "
                     "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
@@ -217,9 +219,11 @@ def upload_and_run_aws_glue_job():
                 "--enable-metrics": "true",
                 "--conf": (
                     "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
-                    "--conf spark.sql.catalog.glue_iceberg=org.apache.iceberg.spark.SparkCatalog "
-                    "--conf spark.sql.catalog.glue_iceberg.warehouse=s3://stackexchange-data-platform-joy/tables/ "
-                    "--conf spark.sql.catalog.glue_iceberg.type=glue "
+                    "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
+                    f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                    "--conf spark.sql.catalog.glue_catalog.type=glue "
+                    "--conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog "
+                    "--conf spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO "
                     "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
                     "--conf spark.sql.iceberg.handle-timestamp-without-timezone=true "
                     "--conf spark.serializer=org.apache.spark.serializer.KryoSerializer "
