@@ -58,6 +58,7 @@ def get_create_job_kwargs(script_path: str, s3_bucket) -> dict:
             "--enable-metrics": "true",
             "--conf": (
                 "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
+                "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
                 f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{s3_bucket}/tables/ "
                 "--conf spark.sql.catalog.glue_catalog.type=glue "
                 "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
