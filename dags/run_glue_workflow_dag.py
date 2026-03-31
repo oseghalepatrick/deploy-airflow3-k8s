@@ -38,7 +38,8 @@ GLUE_SILVER_POSTS_JOB_NAME = "silver-posts-to-iceberg"
 GLUE_GOLD_POSTS_USERS_JOB_NAME = "gold-posts-users-to-iceberg"
 GLUE_GOLD_POPULAR_TAGS_JOB_NAME = "gold-popular-tags-to-iceberg"
 
-def get_create_job_kwargs(script_path: str) -> dict:
+
+def get_create_job_kwargs(script_path: str, s3_bucket) -> dict:
     # Reusable create_job_kwargs (with Iceberg configurations)
     create_job_kwargs = {
         "GlueVersion": "5.0",
@@ -52,12 +53,12 @@ def get_create_job_kwargs(script_path: str) -> dict:
         },
         "DefaultArguments": {
             "--job-language": "python",
-            "--datalake-formats": "iceberg",  # Iceberg format configuration
+            "--datalake-formats": "iceberg",
             "--enable-continuous-cloudwatch-log": "true",
             "--enable-metrics": "true",
             "--conf": (
                 "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
-                f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{s3_bucket}/tables/ "
                 "--conf spark.sql.catalog.glue_catalog.type=glue "
                 "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
                 "--conf spark.sql.iceberg.handle-timestamp-without-timezone=true "
@@ -140,7 +141,9 @@ def upload_and_run_aws_glue_job():
             "--catalog_database": GLUE_DB,
             "--catalog_table": "raw_posts",
         },
-        create_job_kwargs=get_create_job_kwargs(S3_BRONZE_POSTS_GLUE_SCRIPT_PATH),
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_POSTS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
         run_job_kwargs={
             "Timeout": 2880,
         },
@@ -163,7 +166,9 @@ def upload_and_run_aws_glue_job():
             "--catalog_database": GLUE_DB,
             "--catalog_table": "raw_users",
         },
-        create_job_kwargs=get_create_job_kwargs(S3_BRONZE_USERS_GLUE_SCRIPT_PATH),
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_USERS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
         run_job_kwargs={
             "Timeout": 2880,
         },
@@ -187,7 +192,9 @@ def upload_and_run_aws_glue_job():
             "--target_table": "silver_posts",
             "--full_refresh": "true",
         },
-        create_job_kwargs=get_create_job_kwargs(S3_SILVER_POSTS_GLUE_SCRIPT_PATH),
+        create_job_kwargs=get_create_job_kwargs(
+            S3_SILVER_POSTS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
         run_job_kwargs={
             "Timeout": 2880,
         },
@@ -210,7 +217,9 @@ def upload_and_run_aws_glue_job():
             "--raw_users_table": "raw_users",
             "--marts_posts_users_table": "marts_posts_users",
         },
-        create_job_kwargs=get_create_job_kwargs(S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH),
+        create_job_kwargs=get_create_job_kwargs(
+            S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
         run_job_kwargs={
             "Timeout": 2880,
         },
@@ -232,7 +241,9 @@ def upload_and_run_aws_glue_job():
             "--stg_posts_table": "silver_posts",
             "--marts_top_tags_table": "marts_top_tags",
         },
-        create_job_kwargs=get_create_job_kwargs(S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH),
+        create_job_kwargs=get_create_job_kwargs(
+            S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
         run_job_kwargs={
             "Timeout": 2880,
         },
