@@ -12,20 +12,27 @@ AWS_REGION = "eu-west-1"
 IAM_ROLE = "GlueNotebookTutorialRole"
 
 S3_BUCKET = "stackexchange-data-platform-joy"
+GLUE_DB = "stackexchange_data_platform_db"
 
 LOCAL_GLUE_SCRIPT = str(DAG_DIR / "scripts")
 S3_GLUE_SCRIPT_KEY = "scripts"
 S3_BRONZE_POSTS_GLUE_SCRIPT_KEY = "scripts/bronze_posts.py"
 S3_BRONZE_USERS_GLUE_SCRIPT_KEY = "scripts/bronze_users.py"
 S3_SILVER_POSTS_GLUE_SCRIPT_KEY = "scripts/silver_posts.py"
+S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY = "scripts/gold_posts_users.py"
+S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_KEY = "scripts/gold_most_popular_tags.py"
 
 S3_BRONZE_POSTS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_POSTS_GLUE_SCRIPT_KEY}"
 S3_SILVER_POSTS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_SILVER_POSTS_GLUE_SCRIPT_KEY}"
 S3_BRONZE_USERS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_USERS_GLUE_SCRIPT_KEY}"
+S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY}"
+S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_KEY}"
 
 GLUE_BRONZE_POSTS_JOB_NAME = "bronze-posts-xml-to-iceberg"
-GLUE_SILVER_POSTS_JOB_NAME = "silver-posts-to-iceberg"
 GLUE_BRONZE_USERS_JOB_NAME = "bronze-users-xml-to-iceberg"
+GLUE_SILVER_POSTS_JOB_NAME = "silver-posts-to-iceberg"
+GLUE_GOLD_POSTS_USERS_JOB_NAME = "gold-posts-users-to-iceberg"
+GLUE_GOLD_POPULAR_TAGS_JOB_NAME = "gold-popular-tags-to-iceberg"
 
 
 @dag(
@@ -95,7 +102,7 @@ def upload_and_run_aws_glue_job():
         script_args={
             "--source_bucket": S3_BUCKET,
             "--source_key": "raw/posts/Posts.xml",
-            "--catalog_database": "stackexchange_data_platform_db",
+            "--catalog_database": GLUE_DB,
             "--catalog_table": "raw_posts",
             # Iceberg / Spark config from your notebook, translated to Glue job args
             "--datalake-formats": "iceberg",
@@ -147,7 +154,7 @@ def upload_and_run_aws_glue_job():
         script_args={
             "--source_bucket": S3_BUCKET,
             "--source_key": "raw/users/Users.xml",
-            "--catalog_database": "stackexchange_data_platform_db",
+            "--catalog_database": GLUE_DB,
             "--catalog_table": "raw_users",
         },
         create_job_kwargs={
@@ -197,7 +204,7 @@ def upload_and_run_aws_glue_job():
         wait_for_completion=True,
         verbose=True,
         script_args={
-            "--catalog_database": "stackexchange_data_platform_db",
+            "--catalog_database": GLUE_DB,
             "--source_table": "raw_posts",
             "--target_table": "silver_posts",
             "--full_refresh": "true",
@@ -234,8 +241,106 @@ def upload_and_run_aws_glue_job():
         },
     )
 
-    upload_task >> run_bronze_posts_glue_job >> run_silver_posts_glue_job
-    upload_task >> run_bronze_users_glue_job
+    run_posts_users_glue_job = GlueJobOperator(
+        task_id="run_posts_users_glue_job",
+        job_name=GLUE_GOLD_POSTS_USERS_JOB_NAME,
+        script_location=S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY,
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--catalog_database": GLUE_DB,
+            "--stg_posts_table": "silver_posts",
+            "--raw_users_table": "raw_users",
+            "--marts_posts_users_table": "marts_posts_users",
+        },
+        create_job_kwargs={
+            "GlueVersion": "5.0",
+            "WorkerType": "G.1X",
+            "NumberOfWorkers": 2,
+            "ExecutionProperty": {"MaxConcurrentRuns": 1},
+            "Command": {
+                "Name": "glueetl",
+                "ScriptLocation": S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY,
+                "PythonVersion": "3",
+            },
+            "DefaultArguments": {
+                "--job-language": "python",
+                "--datalake-formats": "iceberg",
+                "--enable-continuous-cloudwatch-log": "true",
+                "--enable-metrics": "true",
+                "--conf": (
+                    "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
+                    "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
+                    f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                    "--conf spark.sql.catalog.glue_catalog.type=glue "
+                    "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
+                    "--conf spark.sql.iceberg.handle-timestamp-without-timezone=true "
+                    "--conf spark.serializer=org.apache.spark.serializer.KryoSerializer "
+                    "--conf spark.sql.legacy.pathOptionBehavior.enabled=true"
+                ),
+            },
+        },
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    run_top_tags_glue_job = GlueJobOperator(
+        task_id="run_top_tags_glue_job",
+        job_name=GLUE_GOLD_POPULAR_TAGS_JOB_NAME,  # Glue job name
+        script_location=S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH,  # Location of the Glue script in S3
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--catalog_database": GLUE_DB,
+            "--stg_posts_table": "silver_posts",
+            "--marts_top_tags_table": "marts_top_tags",
+        },
+        create_job_kwargs={
+            "GlueVersion": "5.0",
+            "WorkerType": "G.1X",
+            "NumberOfWorkers": 2,
+            "ExecutionProperty": {"MaxConcurrentRuns": 1},
+            "Command": {
+                "Name": "glueetl",
+                "ScriptLocation": S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH,
+                "PythonVersion": "3",
+            },
+            "DefaultArguments": {
+                "--job-language": "python",
+                "--datalake-formats": "iceberg",
+                "--enable-continuous-cloudwatch-log": "true",
+                "--enable-metrics": "true",
+                "--conf": (
+                    "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions "
+                    "--conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog "
+                    f"--conf spark.sql.catalog.glue_catalog.warehouse=s3://{S3_BUCKET}/tables/ "
+                    "--conf spark.sql.catalog.glue_catalog.type=glue "
+                    "--conf spark.sql.sources.partitionOverwriteMode=dynamic "
+                    "--conf spark.sql.iceberg.handle-timestamp-without-timezone=true "
+                    "--conf spark.serializer=org.apache.spark.serializer.KryoSerializer "
+                    "--conf spark.sql.legacy.pathOptionBehavior.enabled=true"
+                ),
+            },
+        },
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    upload_task >> run_bronze_posts_glue_job >> run_silver_posts_glue_job >> run_posts_users_glue_job
+    upload_task >> run_bronze_users_glue_job >> run_posts_users_glue_job
+    run_silver_posts_glue_job >> run_top_tags_glue_job
 
 
 upload_and_run_aws_glue_job()
