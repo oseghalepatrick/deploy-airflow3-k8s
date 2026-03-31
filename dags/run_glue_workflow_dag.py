@@ -240,7 +240,7 @@ def upload_and_run_aws_glue_job():
     run_posts_users_glue_job = GlueJobOperator(
         task_id="run_posts_users_glue_job",
         job_name=GLUE_GOLD_POSTS_USERS_JOB_NAME,
-        script_location=S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY,
+        script_location=S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH,
         iam_role_name=IAM_ROLE,
         region_name=AWS_REGION,
         aws_conn_id=AWS_CONN_ID,
@@ -261,7 +261,7 @@ def upload_and_run_aws_glue_job():
             "ExecutionProperty": {"MaxConcurrentRuns": 1},
             "Command": {
                 "Name": "glueetl",
-                "ScriptLocation": S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY,
+                "ScriptLocation": S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH,
                 "PythonVersion": "3",
             },
             "DefaultArguments": {
@@ -288,8 +288,8 @@ def upload_and_run_aws_glue_job():
 
     run_top_tags_glue_job = GlueJobOperator(
         task_id="run_top_tags_glue_job",
-        job_name=GLUE_GOLD_POPULAR_TAGS_JOB_NAME,  # Glue job name
-        script_location=S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH,  # Location of the Glue script in S3
+        job_name=GLUE_GOLD_POPULAR_TAGS_JOB_NAME,
+        script_location=S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH,
         iam_role_name=IAM_ROLE,
         region_name=AWS_REGION,
         aws_conn_id=AWS_CONN_ID,
