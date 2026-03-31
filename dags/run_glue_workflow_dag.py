@@ -59,7 +59,6 @@ def upload_and_run_aws_glue_job():
             "s3",
             aws_access_key_id=credentials.access_key,
             aws_secret_access_key=credentials.secret_key,
-            aws_session_token=credentials.session_token,
         )
 
         # Iterate over the local directory and upload files to S3
