@@ -76,7 +76,7 @@ def get_create_job_kwargs(script_path: str, s3_bucket) -> dict:
     dag_id="run_aws_glue_job",
     start_date=datetime(2026, 3, 30),
     schedule=(posts_asset & users_asset),
-    catchup=False,
+    max_active_runs=1,
     tags=["aws", "glue", "s3"],
 )
 def upload_and_run_aws_glue_job():
