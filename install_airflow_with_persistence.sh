@@ -5,9 +5,7 @@ kind create cluster --image kindest/node:v1.29.4 --config k8s/clusters/kind-clus
 # Add airflow to my Helm repo
 helm repo add apache-airflow https://airflow.apache.org
 helm repo update
-helm show values apache-airflow/airflow > chart/values-example.yaml
-sed -i '' 's/3.1.8/3.2.0/g' chart/values-example.yaml
-grep "3.2.0" chart/values-example.yaml
+helm show values apache-airflow/airflow --version 1.21.0 > chart/values-example.yaml
 
 # Export values for Airflow docker image
 export IMAGE_NAME=my-dags
