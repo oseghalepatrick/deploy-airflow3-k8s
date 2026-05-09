@@ -1,9 +1,17 @@
 from datetime import datetime
 from pathlib import Path
 
+from airflow.models.baseoperator import chain
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from airflow.sdk import dag, task
-from produce_data import posts_asset, users_asset
+from produce_data import (
+    badges_asset,
+    comments_asset,
+    posts_asset,
+    tags_asset,
+    users_asset,
+    votes_asset,
+)
 
 DAG_DIR = Path(__file__).resolve().parent
 
@@ -18,6 +26,10 @@ LOCAL_GLUE_SCRIPT = str(DAG_DIR / "scripts")
 S3_GLUE_SCRIPT_KEY = "scripts"
 S3_BRONZE_POSTS_GLUE_SCRIPT_KEY = "scripts/bronze_posts.py"
 S3_BRONZE_USERS_GLUE_SCRIPT_KEY = "scripts/bronze_users.py"
+S3_BRONZE_BADGES_GLUE_SCRIPT_KEY = "scripts/bronze_badges.py"
+S3_BRONZE_COMMENTS_GLUE_SCRIPT_KEY = "scripts/bronze_comments.py"
+S3_BRONZE_TAGS_GLUE_SCRIPT_KEY = "scripts/bronze_tags.py"
+S3_BRONZE_VOTES_GLUE_SCRIPT_KEY = "scripts/bronze_votes.py"
 S3_SILVER_POSTS_GLUE_SCRIPT_KEY = "scripts/silver_posts.py"
 S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY = "scripts/gold_posts_users.py"
 S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_KEY = "scripts/gold_most_popular_tags.py"
@@ -25,6 +37,12 @@ S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_KEY = "scripts/gold_most_popular_tags.py"
 S3_BRONZE_POSTS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_POSTS_GLUE_SCRIPT_KEY}"
 S3_SILVER_POSTS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_SILVER_POSTS_GLUE_SCRIPT_KEY}"
 S3_BRONZE_USERS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_USERS_GLUE_SCRIPT_KEY}"
+
+S3_BRONZE_BADGES_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_BADGES_GLUE_SCRIPT_KEY}"
+S3_BRONZE_COMMENTS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_COMMENTS_GLUE_SCRIPT_KEY}"
+S3_BRONZE_TAGS_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_TAGS_GLUE_SCRIPT_KEY}"
+S3_BRONZE_VOTES_GLUE_SCRIPT_PATH = f"s3://{S3_BUCKET}/{S3_BRONZE_VOTES_GLUE_SCRIPT_KEY}"
+
 S3_GOLD_POSTS_USERS_GLUE_SCRIPT_PATH = (
     f"s3://{S3_BUCKET}/{S3_GOLD_POSTS_USERS_GLUE_SCRIPT_KEY}"
 )
@@ -34,6 +52,12 @@ S3_GOLD_POPULAR_TAGS_GLUE_SCRIPT_PATH = (
 
 GLUE_BRONZE_POSTS_JOB_NAME = "bronze-posts-xml-to-iceberg"
 GLUE_BRONZE_USERS_JOB_NAME = "bronze-users-xml-to-iceberg"
+
+GLUE_BRONZE_BADGES_JOB_NAME = "bronze-badges-xml-to-iceberg"
+GLUE_BRONZE_COMMENTS_JOB_NAME = "bronze-comments-xml-to-iceberg"
+GLUE_BRONZE_TAGS_JOB_NAME = "bronze-tags-xml-to-iceberg"
+GLUE_BRONZE_VOTES_JOB_NAME = "bronze-votes-xml-to-iceberg"
+
 GLUE_SILVER_POSTS_JOB_NAME = "silver-posts-to-iceberg"
 GLUE_GOLD_POSTS_USERS_JOB_NAME = "gold-posts-users-to-iceberg"
 GLUE_GOLD_POPULAR_TAGS_JOB_NAME = "gold-popular-tags-to-iceberg"
@@ -75,7 +99,7 @@ def get_create_job_kwargs(script_path: str, s3_bucket) -> dict:
 @dag(
     dag_id="run_aws_glue_job",
     start_date=datetime(2026, 3, 30),
-    schedule=(posts_asset & users_asset),
+    schedule=(posts_asset & users_asset & badges_asset & comments_asset & tags_asset & votes_asset),
     max_active_runs=1,
     tags=["aws", "glue", "s3"],
 )
@@ -175,6 +199,111 @@ def upload_and_run_aws_glue_job():
         },
     )
 
+    ###############################
+
+
+    run_bronze_badges_glue_job = GlueJobOperator(
+        task_id="run_bronze_badges_glue_job",
+        job_name=GLUE_BRONZE_BADGES_JOB_NAME,
+        script_location=S3_BRONZE_BADGES_GLUE_SCRIPT_PATH,
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--source_bucket": S3_BUCKET,
+            "--source_key": "raw/badges/Badges.xml",
+            "--catalog_database": GLUE_DB,
+            "--catalog_table": "raw_badges",
+        },
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_BADGES_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    run_bronze_comments_glue_job = GlueJobOperator(
+        task_id="run_bronze_comments_glue_job",
+        job_name=GLUE_BRONZE_COMMENTS_JOB_NAME,
+        script_location=S3_BRONZE_COMMENTS_GLUE_SCRIPT_PATH,
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--source_bucket": S3_BUCKET,
+            "--source_key": "raw/comments/Comments.xml",
+            "--catalog_database": GLUE_DB,
+            "--catalog_table": "raw_comments",
+        },
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_COMMENTS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    run_bronze_tags_glue_job = GlueJobOperator(
+        task_id="run_bronze_tags_glue_job",
+        job_name=GLUE_BRONZE_TAGS_JOB_NAME,
+        script_location=S3_BRONZE_TAGS_GLUE_SCRIPT_PATH,
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--source_bucket": S3_BUCKET,
+            "--source_key": "raw/tags/Tags.xml",
+            "--catalog_database": GLUE_DB,
+            "--catalog_table": "raw_tags",
+        },
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_TAGS_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    run_bronze_votes_glue_job = GlueJobOperator(
+        task_id="run_bronze_votes_glue_job",
+        job_name=GLUE_BRONZE_VOTES_JOB_NAME,
+        script_location=S3_BRONZE_VOTES_GLUE_SCRIPT_PATH,
+        iam_role_name=IAM_ROLE,
+        region_name=AWS_REGION,
+        aws_conn_id=AWS_CONN_ID,
+        s3_bucket=S3_BUCKET,
+        update_config=True,
+        wait_for_completion=True,
+        verbose=True,
+        script_args={
+            "--source_bucket": S3_BUCKET,
+            "--source_key": "raw/votes/Votes.xml",
+            "--catalog_database": GLUE_DB,
+            "--catalog_table": "raw_votes",
+        },
+        create_job_kwargs=get_create_job_kwargs(
+            S3_BRONZE_VOTES_GLUE_SCRIPT_PATH, S3_BUCKET
+        ),
+        run_job_kwargs={
+            "Timeout": 2880,
+        },
+    )
+
+    ###############################
+
     # Glue job task to process data
     run_silver_posts_glue_job = GlueJobOperator(
         task_id="run_silver_posts_glue_job",
@@ -250,14 +379,22 @@ def upload_and_run_aws_glue_job():
         },
     )
 
-    (
-        upload_task
-        >> run_bronze_posts_glue_job
-        >> run_silver_posts_glue_job
-        >> run_posts_users_glue_job
+    chain(
+        upload_task,
+        [
+            run_bronze_posts_glue_job,
+            run_bronze_users_glue_job,
+            run_bronze_badges_glue_job,
+            run_bronze_comments_glue_job,
+            run_bronze_tags_glue_job,
+            run_bronze_votes_glue_job
+        ],
+        run_silver_posts_glue_job,
+        [
+            run_posts_users_glue_job,
+            run_top_tags_glue_job
+        ]
     )
-    upload_task >> run_bronze_users_glue_job >> run_posts_users_glue_job
-    run_silver_posts_glue_job >> run_top_tags_glue_job
 
 
 upload_and_run_aws_glue_job()

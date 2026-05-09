@@ -8,9 +8,13 @@ from airflow.sdk import Asset, asset
 
 posts_asset = Asset("s3://stackexchange-data-platform-joy/raw/posts/Posts.xml")
 users_asset = Asset("s3://stackexchange-data-platform-joy/raw/users/Users.xml")
+badges_asset = Asset("s3://stackexchange-data-platform-joy/raw/badges/Badges.xml")
+comments_asset = Asset("s3://stackexchange-data-platform-joy/raw/comments/Comments.xml")
+tags_asset = Asset("s3://stackexchange-data-platform-joy/raw/tags/Tags.xml")
+votes_asset = Asset("s3://stackexchange-data-platform-joy/raw/votes/Votes.xml")
 
 
-@asset.multi(schedule="@daily", outlets=[posts_asset, users_asset])
+@asset.multi(schedule="@daily", outlets=[posts_asset, users_asset, badges_asset, comments_asset, tags_asset, votes_asset])
 def produce_data_assets():
     # Define variables to download file and where to unzip
     key = "ai.meta.stackexchange.com"
@@ -34,6 +38,10 @@ def produce_data_assets():
     s3_hook = S3Hook(aws_conn_id="aws_conn")
     posts_file = os.path.join(extract_path, "Posts.xml")
     users_file = os.path.join(extract_path, "Users.xml")
+    badges_file = os.path.join(extract_path, "Badges.xml")
+    comments_file = os.path.join(extract_path, "Comments.xml")
+    tags_file = os.path.join(extract_path, "Tags.xml")
+    votes_file = os.path.join(extract_path, "Votes.xml")
     s3_hook.load_file(
         filename=posts_file,
         key="raw/posts/Posts.xml",
@@ -43,6 +51,30 @@ def produce_data_assets():
     s3_hook.load_file(
         filename=users_file,
         key="raw/users/Users.xml",
+        bucket_name="stackexchange-data-platform-joy",
+        replace=True,
+    )
+    s3_hook.load_file(
+        filename=badges_file,
+        key="raw/users/Badges.xml",
+        bucket_name="stackexchange-data-platform-joy",
+        replace=True,
+    )
+    s3_hook.load_file(
+        filename=comments_file,
+        key="raw/users/Comments.xml",
+        bucket_name="stackexchange-data-platform-joy",
+        replace=True,
+    )
+    s3_hook.load_file(
+        filename=tags_file,
+        key="raw/users/Tags.xml",
+        bucket_name="stackexchange-data-platform-joy",
+        replace=True,
+    )
+    s3_hook.load_file(
+        filename=votes_file,
+        key="raw/users/Votes.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
