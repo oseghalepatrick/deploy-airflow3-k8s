@@ -37,9 +37,9 @@ glue_context = GlueContext(sc)
 
 schema = StructType(
     [
+        StructField("Id", LongType(), True),
         StructField("PostId", LongType(), True),
         StructField("VoteTypeId", LongType(), True),
-        StructField("UserId", LongType(), True),
         StructField("CreationDate", TimestampType(), True),
     ]
 )
