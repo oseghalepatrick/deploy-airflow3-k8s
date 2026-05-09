@@ -56,25 +56,25 @@ def produce_data_assets():
     )
     s3_hook.load_file(
         filename=badges_file,
-        key="raw/users/Badges.xml",
+        key="raw/badges/Badges.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
     s3_hook.load_file(
         filename=comments_file,
-        key="raw/users/Comments.xml",
+        key="raw/comments/Comments.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
     s3_hook.load_file(
         filename=tags_file,
-        key="raw/users/Tags.xml",
+        key="raw/tags/Tags.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
     s3_hook.load_file(
         filename=votes_file,
-        key="raw/users/Votes.xml",
+        key="raw/votes/Votes.xml",
         bucket_name="stackexchange-data-platform-joy",
         replace=True,
     )
