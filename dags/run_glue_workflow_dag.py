@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from airflow.models.baseoperator import chain
+from airflow.sdk.bases.operator import chain
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
 from airflow.sdk import dag, task
 from produce_data import (

@@ -76,9 +76,9 @@ for elem in elements:
     attrib = elem.attrib
     rows.append(
         (
+            to_long(attrib.get("Id")),
             to_long(attrib.get("PostId")),
             to_long(attrib.get("VoteTypeId")),
-            to_long(attrib.get("UserId")),
             to_timestamp(attrib.get("CreationDate")),
         )
     )
